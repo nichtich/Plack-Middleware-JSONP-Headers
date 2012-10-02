@@ -10,7 +10,7 @@ use URI::Escape ();
 use JSON ();
 use Scalar::Util 'reftype';
 use HTTP::Headers ();
-use Plack::Util::Accessor qw/callback_key headers/;
+use Plack::Util::Accessor qw(callback_key headers template);
 
 sub prepare_app {
     my $self = shift;
@@ -23,16 +23,19 @@ sub prepare_app {
         $self->headers( sub { 1 } );
     }
 
-    my $reftype = reftype $self->headers;
-    unless ($reftype eq 'CODE') {
+    unless (reftype $self->headers eq 'CODE') {
         my $headers = $self->headers;
-         if ($reftype eq 'REGEXP') {
+        if (ref $self->headers eq 'Regexp') {
             $self->headers( sub { $_[0] =~ $headers; } );
-        } elsif ($reftype eq 'ARRAY') {
+        } elsif (reftype $self->headers eq 'ARRAY') {
             $self->headers( sub { grep { $_[0] eq $_ } @$headers } );
         } else {
             die "headers must be code, array, or regexp";
         }
+    }
+
+    unless ($self->template) {
+        $self->template('{ "meta": %s, "data": %s }')
     }
 }
 
@@ -55,8 +58,7 @@ sub wrap_json {
     $meta->{Link} = \@links if @links;
     $meta = JSON->new->encode( $meta );
 
-    # TODO: configure this via template (?)
-    return "{ \"meta\": $meta, \"data\": $data}";
+    sprintf $self->template, $meta, $data;
 }
 
 sub parse_link_header {
@@ -116,8 +118,9 @@ sub call {
 =head1 SYNOPSIS
 
     enable "JSONP::Headers", 
-        callback_key => 'jsonp',
-        headers      => qr/^(X-|Link$)/;
+        callback_key => 'callback',
+        headers      => qr/^(X-|Link$)/,
+        template     => '{ "meta": %s, "data": %s }';
 
 =head1 DESCRIPTION
 
@@ -158,6 +161,12 @@ Callback query parameter. Set to C<callback> by default.
 List of HTTP headers or regular expression of headers to add to the response.
 One can alternatively pass a code reference that gets each header as key-value
 pair. By default all headers are wrapped.
+
+=item template
+
+String template for C<sprintf> to construct the JSON response from HTTP headers
+(first) and original response (second). Set to C<{ "meta": %s, "data": %s }> by
+default.
 
 =back
 

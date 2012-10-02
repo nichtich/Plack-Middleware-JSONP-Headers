@@ -20,26 +20,25 @@ sub with_link {
 
 my @tests = (
        {
-        app => mock_app(200,'{"foo":"bar"}'),
+        app  => mock_app(200,'{"foo":"bar"}'),
         json => { meta => { status => 200, 'Content-Type' => 'application/json' }, data => { foo => "bar" } },
     },{
-        headers => [],
-        app => mock_app(200,'{"foo":"bar"}'),
+        app  => mock_app(200,'{"foo":"bar"}'),
         json => { meta => { status => 200 }, data => { foo => "bar" } },
+        headers => [],
     },{
-        headers => ['X-Foo','X-Bar'],
-        app => mock_app(200,'{"foo":"bar"}', 'X-Bar' => "1"),
+        app  => mock_app(200,'{"foo":"bar"}', 'X-Bar' => "1"),
         json => { meta => { status => 200, 'X-Bar' => "1" }, data => { foo => "bar" } },
+        headers => ['X-Foo','X-Bar'],
     },{
-        headers => qr/^X-/,
         app => \&with_link,
         json => { 
             meta => { 
                 status => 400,
                 'X-Error' => 'bad request',
             }, data => { message => "bad request" } },
+        headers => qr/^X-/,
     },{
-        headers => qr/^[^[CX]/,
         app => \&with_link,
         json => { meta => { 
                 status => 400,
@@ -48,7 +47,13 @@ my @tests = (
                     [ "url2", { rel => "foo", bar => "baz" } ],
                 ]
             }, data => { message => "bad request" } },
-    },
+        headers => qr/^[^[CX]/,
+    },{
+        app  => mock_app(400,'[1,2,3]','X-Foo' => 42, 'X-Bar' => 23),
+        json => { headers => { status => 400, 'X-Foo' => 42 }, body => [1,2,3] },
+        headers  => ['X-Foo'],
+        template => '{ "headers": %s, "body": %s }',
+    }
 );
 
 foreach my $test (@tests) {
