@@ -25,7 +25,7 @@ sub prepare_app {
 
     unless (reftype $self->headers eq 'CODE') {
         my $headers = $self->headers;
-        if (ref $self->headers eq 'Regexp') {
+        if (ref $self->headers eq ref qr//) {
             $self->headers( sub { $_[0] =~ $headers; } );
         } elsif (reftype $self->headers eq 'ARRAY') {
             $self->headers( sub { grep { $_[0] eq $_ } @$headers } );
